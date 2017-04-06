@@ -90,22 +90,6 @@ abstract class Sitemap
         return [];
     }
 
-    public function render()
-    {
-        $data = $this->getData();
-        $sitemap = new SimpleXMLElement("<urlset></urlset>");
-        $sitemap->addAttribute('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9');
-
-        foreach ($data as $item) {
-            $url = $sitemap->addChild('url');
-            foreach ($item as $attribute => $value) {
-                $url->addChild($attribute, $value);
-            }
-        }
-
-        echo $sitemap->asXML();
-    }
-
     /**
      * @param $attributes
      * @return mixed
@@ -122,6 +106,7 @@ abstract class Sitemap
     {
         return [
             'name' => $this->getName($attributes),
+            'level' => $this->getLevel($attributes),
             'loc' => $this->getLoc($attributes),
             'lastmod' => $this->getLastMod($attributes),
             'priority' => $this->getPriority($attributes),
