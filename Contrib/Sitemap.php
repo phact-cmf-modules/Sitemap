@@ -90,6 +90,11 @@ abstract class Sitemap
         return [];
     }
 
+    public function getTitle()
+    {
+        return null;
+    }
+
     /**
      * @param $attributes
      * @return mixed
