@@ -90,6 +90,21 @@ class SitemapProcessor
         return $sitemap;
     }
 
+    public static function getSitemapData()
+    {
+        $sitemap = [];
+
+        foreach (self::getSitemaps() as $name => $sitemapClass) {
+            $sitemapItem = new $sitemapClass();
+            $sitemap []= [
+                'title' => $sitemapItem->getTitle(),
+                'content' => $sitemapItem->getData()
+            ];
+        }
+
+        return $sitemap;
+    }
+    
     public static function createName($module, $name)
     {
         return mb_strtolower(implode('-', [$module, $name]), "UTF-8");
