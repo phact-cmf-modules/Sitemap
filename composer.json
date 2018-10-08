@@ -11,7 +11,7 @@
   },
   "require": {
     "php": "^7.1.3",
-    "phact-cmf/phact": "^1.0.3"
+    "phact-cmf/phact": "^2.0.0"
   },
   "authors": [
     {

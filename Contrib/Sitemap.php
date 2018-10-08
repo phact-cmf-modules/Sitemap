@@ -8,39 +8,49 @@
  * @author Okulov Anton
  * @email qantus@mail.ru
  * @version 1.0
- * @company HashStudio
- * @site http://hashstudio.ru
  * @date 05/04/17 15:10
  */
 
 namespace Modules\Sitemap\Contrib;
 
-
 use DateTime;
-use Phact\Main\Phact;
 use Phact\Orm\QuerySet;
-use SimpleXMLElement;
+use Phact\Request\HttpRequestInterface;
+use Phact\Router\RouterInterface;
 
 abstract class Sitemap
 {
+    /** @var RouterInterface */
     protected $_router;
 
-    public $hostInfo;
+    /** @var HttpRequestInterface */
+    protected $_request;
+
+    /** @var string */
+    protected $_hostInfo;
+
+    public function __construct(RouterInterface $router, HttpRequestInterface $request = null)
+    {
+        $this->_router = $router;
+        $this->_request = $request;
+    }
 
     public function getRouter()
     {
-        if (!$this->_router) {
-            $this->_router = Phact::app()->router;
-        }
         return $this->_router;
+    }
+
+    public function setHostInfo($hostInfo)
+    {
+        $this->_hostInfo = $hostInfo;
     }
 
     public function getHostInfo()
     {
-        if (!$this->hostInfo) {
-            $this->hostInfo = Phact::app()->request->getHostInfo();
+        if (!$this->_hostInfo && $this->_request) {
+            $this->_hostInfo = $this->_request->getHostInfo();
         }
-        return $this->hostInfo;
+        return $this->_hostInfo;
     }
 
     public function url($route, $params = [])

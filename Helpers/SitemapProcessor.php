@@ -7,70 +7,145 @@
  * @author Okulov Anton
  * @email qantus@mail.ru
  * @version 1.0
- * @company HashStudio
- * @site http://hashstudio.ru
  * @date 06/04/17 08:31
  */
 
 namespace Modules\Sitemap\Helpers;
 
 
+use Modules\Meta\Interfaces\ModelMetaInterface;
 use Modules\Sitemap\Contrib\Sitemap;
-use Phact\Helpers\Paths;
+use Phact\Application\ModulesInterface;
+use Phact\Di\ContainerInterface;
 use Phact\Main\Phact;
+use Phact\Request\HttpRequestInterface;
+use Phact\Router\RouterInterface;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SimpleXMLElement;
 
 class SitemapProcessor
 {
-    public static $sitemapFolder = 'Sitemap';
+    public $sitemapFolder = 'Sitemap';
 
-    public static function getSitemaps()
+    /**
+     * @var ModulesInterface
+     */
+    protected $_modules;
+
+    /**
+     * @var ContainerInterface
+     */
+    protected $_container;
+
+    /**
+     * @var ContainerInterface
+     */
+    protected $_router;
+
+    /**
+     * @var HttpRequestInterface
+     */
+    protected $_request;
+
+    /**
+     * @var string
+     */
+    protected $_hostInfo;
+
+    public function __construct(ModelMetaInterface $modules, ContainerInterface $container, RouterInterface $router, HttpRequestInterface $request = null)
     {
-        $modulesPath = Paths::get('Modules');
-        $activeModules = Phact::app()->getModulesList();
-        $classes = [];
-        foreach ($activeModules as $module) {
-            $path = implode(DIRECTORY_SEPARATOR, [$modulesPath, $module, self::$sitemapFolder]);
+        $this->_modules = $modules;
+        $this->_container = $container;
+        $this->_router = $router;
+        $this->_request = $request;
+    }
+
+    /**
+     * @return string
+     */
+    public function getHostInfo()
+    {
+        if (!$this->_hostInfo && $this->_request) {
+            $this->_hostInfo = $this->_request->getHostInfo();
+        }
+        return $this->_hostInfo;
+    }
+
+    /**
+     * @param $hostInfo string
+     */
+    public function setHostInfo($hostInfo)
+    {
+        $this->_hostInfo = $hostInfo;
+    }
+
+    /**
+     * @return Sitemap[]
+     * @throws \Phact\Exceptions\ContainerException
+     * @throws \Phact\Exceptions\NotFoundContainerException
+     * @throws \ReflectionException
+     */
+    public function getSitemaps()
+    {
+        $activeModules = $this->_modules->getModules();
+        $sitemaps = [];
+        foreach ($activeModules as $moduleName => $module) {
+            $path = implode(DIRECTORY_SEPARATOR, [$module->getPath(), $this->sitemapFolder]);
             if (is_dir($path)) {
                 foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path)) as $filename) {
                     // filter out "." and ".."
                     if ($filename->isDir()) continue;
                     $name = $filename->getBasename('.php');
-                    $sitemapName = self::createName($module, $name);
-                    $classes[$sitemapName] = implode('\\', ['Modules', $module, self::$sitemapFolder, $name]);
+                    $sitemapName = $this->createName($module, $name);
+
+                    $class = implode('\\', [$module::classNamespace(), $this->sitemapFolder, $name]);
+
+                    if (class_exists($class) && is_a($class, Sitemap::class, true) && ($reflection = new \ReflectionClass($class))) {
+                        if (!$reflection->isAbstract()) {
+                            $sitemaps[$sitemapName] = $this->_container->construct($class);
+                        }
+                    }
                 }
             }
         }
-        return $classes;
+        return $sitemaps;
     }
 
-    public static function getSitemapIndexXml()
+    /**
+     * @return SimpleXMLElement
+     * @throws \Phact\Exceptions\ContainerException
+     * @throws \Phact\Exceptions\NotFoundContainerException
+     * @throws \ReflectionException
+     */
+    public function getSitemapIndexXml()
     {
         $sitemap = new SimpleXMLElement("<sitemapindex></sitemapindex>");
         $sitemap->addAttribute('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9');
-
-        $router = Phact::app()->router;
-        foreach (self::getSitemaps() as $name => $item) {
+        foreach ($this->getSitemaps() as $name => $item) {
             $url = $sitemap->addChild('sitemap');
-            $url->addChild('loc', Phact::app()->request->getHostInfo() . $router->url('sitemap:xml_item', [
+            $url->addChild('loc', $this->getHostInfo() . $this->_router->url('sitemap:xml_item', [
                 'name' => $name
             ]));
         }
         return $sitemap;
     }
 
-    public static function getSitemapXml($name)
+    /**
+     * @param $name
+     * @return null|SimpleXMLElement
+     * @throws \Phact\Exceptions\ContainerException
+     * @throws \Phact\Exceptions\NotFoundContainerException
+     * @throws \ReflectionException
+     */
+    public function getSitemapXml($name)
     {
         $name = mb_strtolower($name, 'UTF-8');
-        $items = self::getSitemaps();
+        $items = $this->getSitemaps();
         if (!isset($items[$name])) {
             return null;
         }
-        $sitemapClass = $items[$name];
-        /** @var Sitemap $sitemapItem */
-        $sitemapItem = new $sitemapClass();
+        $sitemapItem = $items[$name];
         $data = $sitemapItem->getData();
         $sitemap = new SimpleXMLElement("<urlset></urlset>");
         $sitemap->addAttribute('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9');
@@ -81,7 +156,7 @@ class SitemapProcessor
                 if (in_array($attribute, ['name', 'level'])) {
                     continue;
                 }
-                if (!is_null($value)) {
+                if ($value !== null) {
                     $url->addChild($attribute, $value);
                 }
             }
@@ -90,22 +165,25 @@ class SitemapProcessor
         return $sitemap;
     }
 
-    public static function getSitemapData()
+    /**
+     * @return array
+     * @throws \Phact\Exceptions\ContainerException
+     * @throws \Phact\Exceptions\NotFoundContainerException
+     * @throws \ReflectionException
+     */
+    public function getSitemapData()
     {
-        $sitemap = [];
-
-        foreach (self::getSitemaps() as $name => $sitemapClass) {
-            $sitemapItem = new $sitemapClass();
-            $sitemap []= [
-                'title' => $sitemapItem->getTitle(),
-                'content' => $sitemapItem->getData()
+        $sitemaps = [];
+        foreach ($this->getSitemaps() as $name => $sitemap) {
+            $sitemaps[] = [
+                'title' => $sitemap->getTitle(),
+                'content' => $sitemap->getData()
             ];
         }
-
-        return $sitemap;
+        return $sitemaps;
     }
     
-    public static function createName($module, $name)
+    public function createName($module, $name)
     {
         return mb_strtolower(implode('-', [$module, $name]), "UTF-8");
     }
