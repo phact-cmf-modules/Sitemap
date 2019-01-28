@@ -53,7 +53,7 @@ class SitemapProcessor
      */
     protected $_hostInfo;
 
-    public function __construct(ModelMetaInterface $modules, ContainerInterface $container, RouterInterface $router, HttpRequestInterface $request = null)
+    public function __construct(ModulesInterface $modules, ContainerInterface $container, RouterInterface $router, HttpRequestInterface $request = null)
     {
         $this->_modules = $modules;
         $this->_container = $container;
