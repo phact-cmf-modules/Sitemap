@@ -97,7 +97,7 @@ class SitemapProcessor
                     // filter out "." and ".."
                     if ($filename->isDir()) continue;
                     $name = $filename->getBasename('.php');
-                    $sitemapName = $this->createName($module, $name);
+                    $sitemapName = $this->createName($module->getName(), $name);
 
                     $class = implode('\\', [$module::classNamespace(), $this->sitemapFolder, $name]);
 
