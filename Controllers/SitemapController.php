@@ -11,7 +11,7 @@
  */
 namespace Modules\Sitemap\Controllers;
 
-use Modules\Sitemap\Helpers\SitemapProcessor;
+use Modules\Sitemap\Components\SitemapProcessor;
 use Phact\Controller\Controller;
 use Phact\Di\ContainerInterface;
 use Phact\Request\HttpRequestInterface;
@@ -19,14 +19,11 @@ use Phact\Template\RendererInterface;
 
 class SitemapController extends Controller
 {
-    /**
-     * @var ContainerInterface
-     */
-    protected $_container;
+    private $_sitemapProcessor;
 
-    public function __construct(ContainerInterface $container, HttpRequestInterface $request, RendererInterface $renderer = null)
+    public function __construct(HttpRequestInterface $request, SitemapProcessor $sitemapProcessor, RendererInterface $renderer = null)
     {
-        $this->_container = $container;
+        $this->_sitemapProcessor = $sitemapProcessor;
         parent::__construct($request, $renderer);
     }
 
@@ -50,13 +47,10 @@ class SitemapController extends Controller
     }
 
     /**
-     * @throws \Phact\Exceptions\ContainerException
-     * @throws \Phact\Exceptions\NotFoundContainerException
-     * @throws \ReflectionException
      * @return SitemapProcessor
      */
     public function getProcessor(): SitemapProcessor
     {
-        return $this->_container->construct(SitemapProcessor::class);
+        return $this->_sitemapProcessor;
     }
 }

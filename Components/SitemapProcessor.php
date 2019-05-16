@@ -10,7 +10,7 @@
  * @date 06/04/17 08:31
  */
 
-namespace Modules\Sitemap\Helpers;
+namespace Modules\Sitemap\Components;
 
 
 use Modules\Meta\Interfaces\ModelMetaInterface;
@@ -103,7 +103,10 @@ class SitemapProcessor
 
                     if (class_exists($class) && is_a($class, Sitemap::class, true) && ($reflection = new \ReflectionClass($class))) {
                         if (!$reflection->isAbstract()) {
-                            $sitemaps[$sitemapName] = $this->_container->construct($class);
+                            /** @var Sitemap $sitemap */
+                            $sitemap = $this->_container->construct($class);
+                            $sitemap->setHostInfo($this->getHostInfo());
+                            $sitemaps[$sitemapName] = $sitemap;
                         }
                     }
                 }
